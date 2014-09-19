@@ -31,6 +31,8 @@ namespace BuddySDK
 
         public abstract ConnectivityLevel ConnectionType {get;}
 
+        internal abstract Assembly EntryAssembly { get; }
+
         
         // TODO: Connection speed?
 
@@ -149,7 +151,13 @@ namespace BuddySDK
                 PushToken = GetUserSetting("__PushToken");
             }
 
-            return Task.FromResult(PushToken);
+            return
+#if WINDOWS_PHONE_7x
+                TaskEx
+#else
+                Task
+#endif
+                .FromResult(PushToken);
         }
 
         public event EventHandler PushTokenChanged;
@@ -168,7 +176,7 @@ namespace BuddySDK
         }
 
 
-        public class NotificationReceivedEventArgs
+        public class NotificationReceivedEventArgs : EventArgs
         {
             public string ID { get; set; }
         }

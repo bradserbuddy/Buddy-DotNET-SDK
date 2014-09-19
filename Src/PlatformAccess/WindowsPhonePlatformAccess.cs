@@ -12,15 +12,6 @@ namespace BuddySDK
 {
     internal partial class BuddyClient
     {
-        private WindowsPhonePlatformAccess WpPlatformAccess
-        {
-            get
-            {
-                var pa = (WindowsPhonePlatformAccess)BuddySDK.PlatformAccess.Current;
-                return pa;
-            }
-        }
-
         public void RecordNotificationReceived<T>(T args) 
         {
             var context = args as NavigationContext;
@@ -80,6 +71,7 @@ namespace BuddySDK
                 return "WindowsPhone"; 
             }
         }
+
         public override string Model
         {
             get
@@ -121,11 +113,19 @@ namespace BuddySDK
             }
         }
 
-        protected override Assembly EntryAssembly
+        internal override Assembly EntryAssembly
         {
             get
             {
-                  return Assembly.GetCallingAssembly();
+                return Assembly.GetCallingAssembly();
+            }
+        }
+
+        public override string AppVersion
+        {
+            get {
+                return XDocument.Load("WMAppManifest.xml")
+                    .Root.Element("App").Attribute("Version").Value;
             }
         }
 
@@ -159,6 +159,8 @@ namespace BuddySDK
             {
                 return IsolatedStorageFile.GetUserStoreForApplication();
             }
+
+            protected override string CodeBase { get { return null; } }
         }
 
         private IsolatedStorageSettings _settings = new WindowsPhoneIsoStore();
@@ -191,4 +193,61 @@ namespace BuddySDK
         }
     }
 }
+
+#if WINDOWS_PHONE_7x
+
+namespace System.Reflection
+{
+    internal static class CustomAttributeExtensions
+    {
+        public static T GetCustomAttribute<T>(PropertyInfo pi) where T : Attribute
+        {
+            return (T)pi.GetCustomAttributes(true).SingleOrDefault(attribute => attribute is T);
+        }
+
+        public static T GetCustomAttribute<T>(Type type) where T : Attribute
+        {
+            return (T)type.GetCustomAttributes(true).SingleOrDefault(attribute => attribute is T);
+        }
+
+        public static object GetValue(this PropertyInfo pi, object obj)
+        {
+            return pi.GetValue(obj, new object[0]);
+        }
+
+        public static void SetValue(this PropertyInfo pi, object obj, object value)
+        {
+            pi.SetValue(obj, value, new object[0]);
+        }
+
+        public static Type GetTypeInfo(this Type type)
+        {
+            return type;
+        }
+    }
+}
+
+namespace System
+{
+    internal static class EnumExtensions
+    {
+        // from http://www.sambeauvois.be/blog/2011/08/enum-hasflag-method-extension-for-4-0-framework/
+        public static bool HasFlag(this Enum variable, Enum value)
+        {
+            // check if from the same type.
+            if (variable.GetType() != value.GetType())
+            {
+                throw new ArgumentException("The checked flag is not from the same type as the checked variable.");
+            }
+
+            Convert.ToUInt64(value);
+            ulong num = Convert.ToUInt64(value);
+            ulong num2 = Convert.ToUInt64(variable);
+
+            return (num2 & num) == num;
+        }
+    }
+}
+#endif
+
 #endif

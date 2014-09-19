@@ -14,7 +14,6 @@ using Newtonsoft.Json;
 using System.Threading.Tasks;
 using BuddySDK.Models;
 
-
 namespace BuddySDK
 {
     public class BuddyOptions
@@ -263,15 +262,15 @@ namespace BuddySDK
                     {
                         _appSettings.DevicePushToken = t.Result;
 
-                        // if we have a device token, send up the new push token.
-                        if (_appSettings.DeviceToken != null)
+                    // if we have a device token, send up the new push token.
+                    if (_appSettings.DeviceToken != null)
+                    {
+                        this.UpdateDeviceAsync(_appSettings.DevicePushToken).ContinueWith((t2) =>
                         {
-                            this.UpdateDeviceAsync(_appSettings.DevicePushToken).ContinueWith((t2) =>
-                            {
-                                _appSettings.Save();
-                            });
-                        }
+                            _appSettings.Save();
+                        });
                     }
+                }
                 });
 
             };
@@ -450,10 +449,22 @@ namespace BuddySDK
             if (_appSettings.UserToken == null) {
                 _user = null;
                 OnAuthorizationFailure (null);
-                return Task.FromResult (_user);
+                return
+#if WINDOWS_PHONE_7x
+                TaskEx
+#else
+                Task
+#endif
+                .FromResult(_user);
             }
             else if (_user != null && !reload) {
-                return Task.FromResult (_user);
+                return
+#if WINDOWS_PHONE_7x
+                TaskEx
+#else
+                Task
+#endif
+                .FromResult(_user);
             } else {
 
                 var t = GetAsync<User> ("/users/me");

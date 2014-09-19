@@ -91,7 +91,7 @@ namespace BuddySDK
             }
         }
 
-        protected override Assembly EntryAssembly
+        internal override Assembly EntryAssembly
         {
             get { return Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly(); }
         }
@@ -120,11 +120,12 @@ namespace BuddySDK
       
         private class DotNetIsoStore : IsolatedStorageSettings
         {
-
             protected override IsolatedStorageFile GetIsolatedStorageFile()
             {
                 return IsolatedStorageFile.GetStore(IsolatedStorageScope.User | IsolatedStorageScope.Assembly, null, null);
             }
+
+            protected override string CodeBase { get { return PlatformAccess.Current.EntryAssembly.CodeBase; } }
         }
 
         private IsolatedStorageSettings _settings = new DotNetIsoStore();

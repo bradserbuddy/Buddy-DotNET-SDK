@@ -12,17 +12,16 @@ namespace BuddySDK
     internal abstract class IsolatedStorageSettings
     {
         protected abstract IsolatedStorageFile GetIsolatedStorageFile();
+        protected abstract string CodeBase { get; }
 
-
-        private static string ExecutionBinDir
+        private string ExecutionBinDir
         {
-            get { return Path.GetDirectoryName(new Uri(Assembly.GetExecutingAssembly().CodeBase).LocalPath); }
+            get { return Path.GetDirectoryName(new Uri(CodeBase).LocalPath); }
         }
 
         protected virtual FileStream GetFileStream(bool create)
         {
             IsolatedStorageFile isoStore = null;
-
 
             try
             {
@@ -33,17 +32,18 @@ namespace BuddySDK
                 // isolated storage not available, fall back to file.
                 //
             }
+#if !WINDOWS_PHONE_7x
             catch (ApplicationException)
             {
                 // isolated storage not available, fall back to file.
                 //
             }
+#endif
 
             FileStream fs = null;
 
             if (isoStore != null)
             {
-
                 if (isoStore.FileExists("_buddy") || create)
                 {
                     return isoStore.OpenFile("_buddy", FileMode.OpenOrCreate);

@@ -68,25 +68,7 @@ namespace BuddySDK
             }
         }
 
-        protected abstract Assembly EntryAssembly { get; }
-
-
-        public override string AppVersion
-        {
-            get
-            {
-
-                if (EntryAssembly != null)
-                {
-                    var attr = EntryAssembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
-                    return attr.Version;
-                }
-
-                return "1.0";
-            }
-        }
-
-
+        
         public override ConnectivityLevel ConnectionType
         {
             get
