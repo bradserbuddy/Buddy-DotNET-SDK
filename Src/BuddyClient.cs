@@ -287,7 +287,7 @@ namespace BuddySDK
                     return _appSettings.DeviceToken;
                 }
 
-                _appSettings.DeviceToken = await GetDeviceToken();
+                _appSettings.DeviceToken = await GetDeviceToken().ConfigureAwait(false);
                 _appSettings.Save();
                 return _appSettings.DeviceToken;
             }
@@ -614,7 +614,9 @@ namespace BuddySDK
                     }
                     else
                     {
-                        PlatformAccess.Current.InvokeOnUiThread(() => { completed(r1Result, r2.Result); tcs.SetResult(r2.Result); });
+                        BuddyResult<T2> newResult = r2.IsFaulted ? new BuddyResult<T2>() { Error = new BuddyNoInternetException(null) } : r2.Result;
+
+                        completed(r1Result, newResult); tcs.SetResult(newResult);
                     }
                 });
             return tcs.Task;
