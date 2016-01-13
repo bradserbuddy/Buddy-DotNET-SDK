@@ -155,6 +155,7 @@ namespace BuddySDK
     {
         private IsolatedStorageFile isoStore;
         private FileStream fs;
+        private static object lockObject = new object();
 
         public IsoStoreFileStream(IsolatedStorageFile isoStore, FileStream fs)
         {
@@ -164,19 +165,22 @@ namespace BuddySDK
 
         public void Using(Action<FileStream> action)
         {
-            if (isoStore == null)
+            lock (lockObject)
             {
-                using (fs)
+                if (isoStore == null)
                 {
-                    action(fs);
+                    using (fs)
+                    {
+                        action(fs);
+                    }
                 }
-            }
-            else
-            {
-                using (isoStore)
-                using (fs)
+                else
                 {
-                    action(fs);
+                    using (isoStore)
+                    using (fs)
+                    {
+                        action(fs);
+                    }
                 }
             }
         }
