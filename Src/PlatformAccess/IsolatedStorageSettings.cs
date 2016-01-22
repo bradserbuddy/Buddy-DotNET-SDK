@@ -16,7 +16,7 @@ namespace BuddySDK
 
         protected abstract string ExecutionBinDir { get; }
 
-        private static System.Threading.ReaderWriterLock readerWriterLock = new ReaderWriterLock();
+        private static System.Threading.ReaderWriterLockSlim readerWriterLock = new ReaderWriterLockSlim();
         private static int timeout = 10000;
 
         protected virtual IsoStoreFileStream GetFileStream(bool create)
@@ -66,7 +66,7 @@ namespace BuddySDK
             string existing = "";
             try
             {
-                readerWriterLock.AcquireReaderLock(timeout);
+                readerWriterLock.EnterReadLock();
                 var isfs = GetFileStream(false);
                 if (isfs != null)
                 {
@@ -81,7 +81,7 @@ namespace BuddySDK
             }
             finally
             {
-                readerWriterLock.ReleaseReaderLock();
+                readerWriterLock.ExitReadLock();
             }
 
             var d = new Dictionary<string, string>();
@@ -108,7 +108,7 @@ namespace BuddySDK
 
             try
             {
-                readerWriterLock.AcquireWriterLock(timeout);
+                readerWriterLock.EnterWriteLock();
 
                 var isfs = GetFileStream(true);
                 isfs.Using((fs) =>
@@ -123,7 +123,7 @@ namespace BuddySDK
             }
             finally
             {
-                readerWriterLock.ReleaseWriterLock();
+                readerWriterLock.ExitWriteLock();
             }
         }
 
@@ -149,7 +149,7 @@ namespace BuddySDK
 
             if (parsed.ContainsKey(key))
             {
-                result = PlatformAccess.DecodeUserSetting((string) parsed[key]);
+                result = PlatformAccess.DecodeUserSetting(parsed[key]);
 
                 if (result == null)
                 {
