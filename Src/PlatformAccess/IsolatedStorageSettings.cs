@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.IO.IsolatedStorage;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace BuddySDK
 {
@@ -14,10 +16,12 @@ namespace BuddySDK
 
         protected abstract string ExecutionBinDir { get; }
 
+        private static System.Threading.ReaderWriterLock readerWriterLock = new ReaderWriterLock();
+        private static int timeout = 10000;
+
         protected virtual IsoStoreFileStream GetFileStream(bool create)
         {
             IsolatedStorageFile isoStore = null;
-
             try
             {
                 isoStore = GetIsolatedStorageFile();
@@ -54,24 +58,30 @@ namespace BuddySDK
                     isfs = new IsoStoreFileStream(null, fs);
                 }
             }
-
             return isfs;
         }
 
         public virtual IDictionary<string, string> LoadSettings()
         {
             string existing = "";
-
-            var isfs = GetFileStream(false);
-            if (isfs != null)
+            try
             {
-                isfs.Using((fs) =>
+                readerWriterLock.AcquireReaderLock(timeout);
+                var isfs = GetFileStream(false);
+                if (isfs != null)
+                {
+                    isfs.Using((fs) =>
                     {
                         using (var sr = new StreamReader(fs))
                         {
                             existing = sr.ReadToEnd();
                         }
                     });
+                }
+            }
+            finally
+            {
+                readerWriterLock.ReleaseReaderLock();
             }
 
             var d = new Dictionary<string, string>();
@@ -83,12 +93,12 @@ namespace BuddySDK
 
                 parts = parts.NextMatch();
             }
-
             return d;
         }
 
         public void SaveSettings(IDictionary<string, string> values)
         {
+            Debug.WriteLine(Thread.CurrentThread.ManagedThreadId + " >SaveSettings");
             var sb = new StringBuilder();
 
             foreach (var kvp in values)
@@ -96,8 +106,12 @@ namespace BuddySDK
                 sb.AppendFormat(CultureInfo.InvariantCulture, "{0}={1};", kvp.Key, kvp.Value ?? "");
             }
 
-            var isfs = GetFileStream(true);
-            isfs.Using((fs) =>
+            try
+            {
+                readerWriterLock.AcquireWriterLock(timeout);
+
+                var isfs = GetFileStream(true);
+                isfs.Using((fs) =>
                 {
                     var sbString = sb.ToString();
                     using (var sw = new StreamWriter(fs))
@@ -106,11 +120,19 @@ namespace BuddySDK
                         fs.SetLength(sbString.Length);
                     }
                 });
+            }
+            finally
+            {
+                readerWriterLock.ReleaseWriterLock();
+            }
         }
 
         public void SetUserSetting(string key, string value, DateTime? expires = default(DateTime?))
         {
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null)
+            {
+                throw new ArgumentNullException("key");
+            }
 
             // parse it
             var parsed = LoadSettings();
@@ -122,21 +144,20 @@ namespace BuddySDK
 
         public string GetUserSetting(string key)
         {
+            string result = null;
             var parsed = LoadSettings();
 
             if (parsed.ContainsKey(key))
             {
-                var value = PlatformAccess.DecodeUserSetting((string)parsed[key]);
+                result = PlatformAccess.DecodeUserSetting((string) parsed[key]);
 
-                if (value == null)
+                if (result == null)
                 {
                     ClearUserSetting(key);
                 }
-
-                return value;
             }
 
-            return null;
+            return result;
         }
 
         public void ClearUserSetting(string key)
@@ -151,6 +172,7 @@ namespace BuddySDK
         }
     }
 
+    //This is NOT a stream, just a wrapper.
     internal class IsoStoreFileStream
     {
         private IsolatedStorageFile isoStore;

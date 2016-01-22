@@ -287,7 +287,7 @@ namespace BuddySDK
                     return _appSettings.DeviceToken;
                 }
 
-                _appSettings.DeviceToken = await GetDeviceToken();
+                _appSettings.DeviceToken = await GetDeviceToken().ConfigureAwait(false);
                 _appSettings.Save();
                 return _appSettings.DeviceToken;
             }
@@ -614,7 +614,9 @@ namespace BuddySDK
                     }
                     else
                     {
-                        PlatformAccess.Current.InvokeOnUiThread(() => { completed(r1Result, r2.Result); tcs.SetResult(r2.Result); });
+                        BuddyResult<T2> newResult = r2.IsFaulted ? new BuddyResult<T2>() { Error = new BuddyNoInternetException(null) } : r2.Result;
+
+                        completed(r1Result, newResult); tcs.SetResult(newResult);
                     }
                 });
             return tcs.Task;
@@ -860,7 +862,7 @@ namespace BuddySDK
         }
 
         // User auth.
-        public System.Threading.Tasks.Task<BuddyResult<User>> CreateUserAsync(
+        public async System.Threading.Tasks.Task<BuddyResult<User>> CreateUserAsync(
             string username, string password, 
             string firstName = null, string lastName = null,
             string email = null, User.UserGender? gender = null, 
@@ -873,7 +875,7 @@ namespace BuddySDK
             if (dateOfBirth > DateTime.Now)
                 throw new ArgumentException("dateOfBirth must be in the past.", "dateOfBirth");
 
-            return LoginUserCoreAsync<User>("/users",  new
+            return await LoginUserCoreAsync<User>("/users",  new
                 {
                     firstName = firstName,
                     lastName = lastName,
@@ -922,33 +924,27 @@ namespace BuddySDK
             return JsonConvert.DeserializeObject<T> (JsonConvert.SerializeObject (dictionary));
         }
 
-        private Task<BuddyResult<T>> LoginUserCoreAsync<T>(string path, object parameters) where T : User
+        private async Task<BuddyResult<T>> LoginUserCoreAsync<T>(string path, object parameters) where T : User
         {
-            var t = PostAsync<IDictionary<string,object>>(
+            var t = await PostAsync<IDictionary<string,object>>(
                     path,
                     parameters);
-                    
-            return t.ContinueWith<BuddyResult<T>>(r => {
 
                 // update our current user
                 //
                 T user = null;
-                if(r.Result.IsSuccess && r.Result.Value != null) {
+                if(t.IsSuccess && t.Value != null) {
 
                     // create the user
                     //
-                    var dict = r.Result.Value;
+                    var dict = t.Value;
                     user = FromDictionary<T>(dict);
                     SetCurrentUser(user, (string)dict["accessToken"], (DateTime?) dict["accessTokenExpires"]);
 
                 }
-                return r.Result.Convert<T>((d) => {
-
+                return t.Convert<T>((d) => {
                     return user;
                 });
-            }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnRanToCompletion);
-
-
         }
 
         private async Task<BuddyResult<bool>> LogoutInternal() {
@@ -1072,29 +1068,29 @@ namespace BuddySDK
             return procResult;
         }
 
-        public Task<BuddyResult<T>> GetAsync<T>(string path, object parameters = null)
+        public async Task<BuddyResult<T>> GetAsync<T>(string path, object parameters = null)
         {
-            return GenericRestCall<T>(GetVerb, path, parameters, false);
+            return await GenericRestCall<T>(GetVerb, path, parameters, false);
         }
 
-        public Task<BuddyResult<T>> PostAsync<T>(string path, object parameters = null)
+        public async Task<BuddyResult<T>> PostAsync<T>(string path, object parameters = null)
         {
-            return GenericRestCall<T>(PostVerb, path, parameters, false);
+            return await GenericRestCall<T>(PostVerb, path, parameters, false);
         }
 
-        public Task<BuddyResult<T>> PatchAsync<T>(string path, object parameters = null)
+        public async Task<BuddyResult<T>> PatchAsync<T>(string path, object parameters = null)
         {
-            return GenericRestCall<T>(PatchVerb, path, parameters, false);
+            return await GenericRestCall<T>(PatchVerb, path, parameters, false);
         }
 
-        public Task<BuddyResult<T>> PutAsync<T>(string path, object parameters = null)
+        public async Task<BuddyResult<T>> PutAsync<T>(string path, object parameters = null)
         {
-            return GenericRestCall<T>(PutVerb, path, parameters, false);
+            return await GenericRestCall<T>(PutVerb, path, parameters, false);
         }
 
-        public Task<BuddyResult<T>> DeleteAsync<T>(string path, object parameters = null)
+        public async Task<BuddyResult<T>> DeleteAsync<T>(string path, object parameters = null)
         {
-            return GenericRestCall<T>(DeleteVerb, path, parameters, false);
+            return await GenericRestCall<T>(DeleteVerb, path, parameters, false);
         }
         #endregion
     }

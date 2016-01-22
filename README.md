@@ -1,5 +1,6 @@
 # Buddy .NET SDK
-These release notes are for the Buddy Platform .NET SDK.
+
+## Overview
 
 The Buddy .NET SDK helps you get up and running in seconds.  
 
@@ -124,10 +125,10 @@ Each SDK provides general wrappers that make REST calls to Buddy.
 #### POST
 
     var result = await Buddy.PostAsync<Checkin>("/checkins", new {
-					        location = new BuddyGeoLocation(47.1, -122.3),
-					        comment =  "This place was awesome!"
-					    });
-	// POST results return similar responses to GET, use the result to check for success
+                            location = new BuddyGeoLocation(47.1, -122.3),
+                            comment =  "This place was awesome!"
+                        });
+    // POST results return similar responses to GET, use the result to check for success
 
 #### PUT/PATCH/DELETE
 
